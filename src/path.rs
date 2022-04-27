@@ -93,4 +93,18 @@ where
         self.save(store, &output)?;
         Ok(output)
     }
+
+    /// Loads the data if it exists or creates a default, performs the specified action, and store the result
+    /// in the database. This is shorthand for some common sequences, which may be useful.
+    pub fn update_or_default<A, E>(&self, store: &mut dyn Storage, action: A) -> Result<T, E>
+    where
+        T: Default,
+        A: FnOnce(T) -> Result<T, E>,
+        E: From<StdError>,
+    {
+        let input = self.may_load(store)?.unwrap_or_default();
+        let output = action(input)?;
+        self.save(store, &output)?;
+        Ok(output)
+    }
 }

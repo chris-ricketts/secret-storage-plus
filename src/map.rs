@@ -92,6 +92,16 @@ where
         self.key(k).update(store, action)
     }
 
+    /// Loads the data if it exists or creates a default, performs the specified action, and store the result
+    /// in the database. This is shorthand for some common sequences, which may be useful.
+    pub fn update_or_default<A, E>(&self, store: &mut dyn Storage, k: K, action: A) -> Result<T, E>
+    where
+        T: Default,
+        A: FnOnce(T) -> Result<T, E>,
+        E: From<StdError>,
+    {
+        self.key(k).update_or_default(store, action)
+    }
     // NOTE: I don't think this is relevent to CosmWasm 0.10?
     ///// If you import the proper Map from the remote contract, this will let you read the data
     ///// from a remote contract in a type-safe way using WasmQuery::RawQuery
@@ -1124,6 +1134,25 @@ mod test {
         let key: (&[u8], &[u8]) = (b"owner", b"spender");
         ALLOWANCE.update(&mut store, key, add_ten).unwrap();
         let twenty = ALLOWANCE.update(&mut store, key, add_ten).unwrap();
+        assert_eq!(20, twenty);
+        let loaded = ALLOWANCE.load(&store, key).unwrap();
+        assert_eq!(20, loaded);
+    }
+
+    #[test]
+    fn update_or_default() {
+        let mut store = MockStorage::new();
+
+        let add_ten = |a| -> StdResult<_> { Ok(a + 10) };
+
+        // save and load on three keys, one under different owner
+        let key: (&[u8], &[u8]) = (b"owner", b"spender");
+        ALLOWANCE
+            .update_or_default(&mut store, key, add_ten)
+            .unwrap();
+        let twenty = ALLOWANCE
+            .update_or_default(&mut store, key, add_ten)
+            .unwrap();
         assert_eq!(20, twenty);
         let loaded = ALLOWANCE.load(&store, key).unwrap();
         assert_eq!(20, loaded);
